@@ -882,15 +882,6 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
                    <p className="text-slate-500 mt-2">Manage your classes, students and curriculum.</p>
                  </div>
                  <div className="flex items-center gap-4">
-                    {/* API Key Button */}
-                    <button 
-                        onClick={() => { setTempKeyInput(apiKey); setShowKeyModal(true); }}
-                        className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 font-medium text-sm border border-slate-200 px-3 py-2 rounded-lg bg-white shadow-sm"
-                        title="Manage API Key"
-                    >
-                        <Key size={16} /> {apiKey ? 'Key Configured' : 'Set API Key'}
-                    </button>
-
                     <button 
                         onClick={() => setShowGrading(true)} 
                         className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-lg hover:bg-slate-50 font-bold shadow-sm relative transition-all active:scale-95"
@@ -2248,7 +2239,7 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
                                     />
                                     {newAssignment.writingImage ? (
                                         <div className="flex flex-col items-center">
-                                            <img src={`data:image/png;base64,${newAssignment.writingImage}`} alt="Task 1 Chart" className="max-h-48 rounded shadow-sm mb-2" />
+                                            <img src={`data:image/png;base64,${newAssignment.writingImage}`} alt="Task 1 Graph" className="max-h-48 rounded shadow-sm mb-2" />
                                             <span className="text-xs text-green-600 font-bold">Image Uploaded (Click to change)</span>
                                         </div>
                                     ) : (
