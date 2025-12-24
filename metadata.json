@@ -1,0 +1,8 @@
+{
+  "name": "IELTS Master LMS",
+  "description": "A comprehensive Learning Management System for IELTS preparation with AI-powered grading, content generation, and audio analysis.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ]
+}
