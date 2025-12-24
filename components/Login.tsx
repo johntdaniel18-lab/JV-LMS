@@ -8,7 +8,6 @@ interface LoginProps {
 
 export const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [activeTab, setActiveTab] = useState<'teacher' | 'student'>('student');
-  const [isRegistering, setIsRegistering] = useState(false);
   // Default to Test User credentials
   const [identifier, setIdentifier] = useState('Trung'); 
   const [secret, setSecret] = useState('1234');
@@ -18,7 +17,6 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const switchTab = (tab: 'teacher' | 'student') => {
     setActiveTab(tab);
     setError(null);
-    setIsRegistering(false);
     if (tab === 'student') {
       setIdentifier('Trung');
       setSecret('1234');
@@ -36,16 +34,19 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setError(null);
     try {
       if (activeTab === 'teacher') {
-        await onLogin(UserRole.TEACHER, identifier, secret, isRegistering);
+        // Ensure isRegistering is false for teachers
+        await onLogin(UserRole.TEACHER, identifier, secret, false);
       } else {
         await onLogin(UserRole.STUDENT, identifier, secret);
       }
     } catch (err: any) {
       console.error(err);
       if (err.code === 'auth/invalid-credential') {
-        setError("Invalid email or password. If you haven't created an account yet, please switch to 'Sign Up'.");
-      } else if (err.code === 'auth/email-already-in-use') {
-        setError("That email is already registered. Please Sign In instead.");
+        setError("Invalid email or password. Please contact the administrator.");
+      } else if (err.code === 'auth/user-not-found') {
+        setError("Account not found. Please contact the administrator.");
+      } else if (err.code === 'auth/wrong-password') {
+        setError("Invalid password.");
       } else if (err.code === 'auth/weak-password') {
         setError("Password should be at least 6 characters.");
       } else {
@@ -132,9 +133,6 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   value={secret}
                   onChange={(e) => setSecret(e.target.value)}
                 />
-                {isRegistering && (
-                  <p className="text-xs text-gray-500 mt-1">Must be at least 6 characters</p>
-                )}
               </div>
             )}
 
@@ -146,29 +144,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
               {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
               {activeTab === 'student' 
                 ? 'Enter Classroom' 
-                : (isRegistering ? 'Create Account' : 'Access Dashboard')}
+                : 'Access Dashboard'}
             </button>
           </form>
-
-          {activeTab === 'teacher' && (
-            <div className="mt-4 text-center">
-              <button
-                type="button"
-                onClick={() => { setIsRegistering(!isRegistering); setError(null); }}
-                className="text-sm text-indigo-600 hover:text-indigo-800 font-medium flex items-center justify-center gap-1 mx-auto"
-              >
-                {isRegistering ? (
-                  <>
-                    <LogIn size={14} /> Already have an account? Sign In
-                  </>
-                ) : (
-                  <>
-                    <UserPlus size={14} /> Don't have an account? Sign Up
-                  </>
-                )}
-              </button>
-            </div>
-          )}
 
           <p className="text-xs text-center text-gray-400 mt-6">
             Powered by Gemini AI & Firebase

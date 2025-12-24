@@ -1,19 +1,19 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 
 // Helper to get the API client
-const getAiClient = () => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    throw new Error("API_KEY is missing from environment variables.");
+const getAiClient = (apiKey?: string) => {
+  const key = apiKey || localStorage.getItem('gemini_api_key') || process.env.API_KEY;
+  if (!key) {
+    throw new Error("API_KEY is missing. Please enter it in the Teacher Portal.");
   }
-  return new GoogleGenAI({ apiKey });
+  return new GoogleGenAI({ apiKey: key });
 };
 
 /**
  * Transcribes audio using Gemini 2.5 Flash
  */
-export const transcribeAudio = async (base64Audio: string, mimeType: string): Promise<string> => {
-  const ai = getAiClient();
+export const transcribeAudio = async (base64Audio: string, mimeType: string, apiKey?: string): Promise<string> => {
+  const ai = getAiClient(apiKey);
   
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
@@ -41,14 +41,14 @@ export const transcribeAudio = async (base64Audio: string, mimeType: string): Pr
 };
 
 /**
- * Analyzes an image (e.g., essay, worksheet) using Gemini 3 Pro Preview
+ * Analyzes an image (e.g., essay, worksheet) using Gemini 2.5 Flash
  */
-export const analyzeImage = async (base64Image: string, mimeType: string, prompt: string): Promise<string> => {
-  const ai = getAiClient();
+export const analyzeImage = async (base64Image: string, mimeType: string, prompt: string, apiKey?: string): Promise<string> => {
+  const ai = getAiClient(apiKey);
 
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview', // Using the pro model for better vision capabilities
+      model: 'gemini-2.5-flash', // Switched to Flash
       contents: {
         parts: [
           {
@@ -72,8 +72,8 @@ export const analyzeImage = async (base64Image: string, mimeType: string, prompt
 /**
  * Generates content (Questions, Feedback, etc.) using Gemini 2.5 Flash
  */
-export const generateContent = async (prompt: string, systemInstruction?: string): Promise<string> => {
-  const ai = getAiClient();
+export const generateContent = async (prompt: string, systemInstruction?: string, apiKey?: string): Promise<string> => {
+  const ai = getAiClient(apiKey);
 
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
@@ -98,9 +98,10 @@ export const gradeWritingTask = async (
     taskType: 'TASK_1' | 'TASK_2',
     promptText: string,
     studentEssay: string,
-    chartImageBase64?: string
+    chartImageBase64?: string,
+    apiKey?: string
   ): Promise<any> => {
-    const ai = getAiClient();
+    const ai = getAiClient(apiKey);
     
     const parts: any[] = [];
   
@@ -145,9 +146,9 @@ export const gradeWritingTask = async (
     parts.push({ text: gradingPrompt });
   
     try {
-      // Use Pro model for better reasoning on grading
+      // Switched to Flash
       const response = await ai.models.generateContent({
-        model: 'gemini-3-pro-preview', 
+        model: 'gemini-2.5-flash', 
         contents: { parts },
         config: {
             responseMimeType: 'application/json'
@@ -168,8 +169,8 @@ export const gradeWritingTask = async (
 /**
  * Extracts Reading Passage and Questions from an image or PDF
  */
-export const extractQuizFromImage = async (base64Data: string, mimeType: string = 'image/png'): Promise<any> => {
-  const ai = getAiClient();
+export const extractQuizFromImage = async (base64Data: string, mimeType: string = 'image/png', apiKey?: string): Promise<any> => {
+  const ai = getAiClient(apiKey);
   
   const prompt = `
     You are an expert IELTS Data Extractor and Formatter. I will provide you with a document (image or PDF) of an IELTS Reading Test. You must convert this content into a strict JSON object that matches my application's TypeScript schema exactly.
@@ -228,7 +229,7 @@ export const extractQuizFromImage = async (base64Data: string, mimeType: string 
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-2.5-flash', // Switched to Flash
       contents: {
         parts: [
           { inlineData: { mimeType: mimeType, data: base64Data } },

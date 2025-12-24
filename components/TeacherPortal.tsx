@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { User, Assignment, Submission, AssignmentType, ClassGroup, Question, UserRole, Session, Material, CalendarEvent, AssignmentGroup, QuestionGroup } from '../types';
-import { Plus, Users, CheckSquare, Sparkles, X, ChevronRight, BookOpen, Link as LinkIcon, Calendar as CalendarIcon, Trash2, Pencil, Image as ImageIcon, Layout, Loader2, Play, Folder, FolderPlus, ArrowLeft, MoreVertical, Square, BarChart3, FileText, Upload, AlertCircle, RefreshCw, ClipboardPaste, Eye, Minus, ShieldAlert, Bell, AlertTriangle, GripVertical } from 'lucide-react';
+import { Plus, Users, CheckSquare, Sparkles, X, ChevronRight, BookOpen, Link as LinkIcon, Calendar as CalendarIcon, Trash2, Pencil, Image as ImageIcon, Layout, Loader2, Play, Folder, FolderPlus, ArrowLeft, MoreVertical, Square, BarChart3, FileText, Upload, AlertCircle, RefreshCw, ClipboardPaste, Eye, Minus, ShieldAlert, Bell, AlertTriangle, GripVertical, Key } from 'lucide-react';
 import { generateContent, analyzeImage, transcribeAudio, gradeWritingTask, extractQuizFromImage } from '../services/geminiService';
 import { Calendar } from './Calendar';
 import { RichTextEditor } from './RichTextEditor';
@@ -69,6 +69,26 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'schedule' | 'students' | 'sessions' | 'assignments' | 'grades'>('overview');
   
+  // API KEY STATE
+  const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
+  const [showKeyModal, setShowKeyModal] = useState(false);
+  const [tempKeyInput, setTempKeyInput] = useState('');
+
+  // Check for API key on mount
+  useEffect(() => {
+    if (!apiKey) {
+        setShowKeyModal(true);
+    }
+  }, [apiKey]);
+
+  const handleSaveKey = () => {
+    if (tempKeyInput.trim()) {
+        localStorage.setItem('gemini_api_key', tempKeyInput.trim());
+        setApiKey(tempKeyInput.trim());
+        setShowKeyModal(false);
+    }
+  };
+
   // Assignment Folder Navigation
   const [viewingGroupId, setViewingGroupId] = useState<string | null>(null);
 
@@ -265,8 +285,8 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
             const base64Data = base64String.split(',')[1];
             
             try {
-                // Pass mimeType to support PDF and Image
-                const data = await extractQuizFromImage(base64Data, file.type);
+                // Pass mimeType to support PDF and Image, and pass API KEY
+                const data = await extractQuizFromImage(base64Data, file.type, apiKey);
                 
                 // Update State with Extracted Data
                 if (data.passageContent) {
@@ -289,7 +309,7 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
                 alert("Import successful! Please review the extracted data.");
             } catch (err) {
                 console.error(err);
-                alert("Failed to extract data from file. Please ensure it is clear.");
+                alert("Failed to extract data. Please check your API Key and file clarity.");
             } finally {
                 setIsImporting(false);
                 if (aiImportInputRef.current) aiImportInputRef.current.value = '';
@@ -775,10 +795,10 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
     try {
       // General feedback logic (old)
       const prompt = `Grade this IELTS submission. Provide Band Score and Feedback.`;
-      const response = await generateContent(prompt);
+      const response = await generateContent(prompt, undefined, apiKey); // PASS API KEY
       setGradeInput("6.5"); 
       setFeedbackInput(response);
-    } catch (e) { alert("AI Grading failed"); } finally { setIsAiGrading(false); }
+    } catch (e) { alert("AI Grading failed. Please check your API Key."); } finally { setIsAiGrading(false); }
   };
   
   const handleAiGradeWriting = async () => {
@@ -798,7 +818,8 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
             assignment.writingTaskType,
             assignment.writingPrompt,
             studentEssay,
-            assignment.writingImage
+            assignment.writingImage,
+            apiKey // PASS API KEY
         );
 
         setAiWritingFeedback(result);
@@ -806,7 +827,7 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
         setFeedbackInput(result.generalComment);
     } catch (e) {
         console.error(e);
-        alert("AI Grading Failed. Please try again.");
+        alert("AI Grading Failed. Please check your API Key.");
     } finally {
         setIsAiGrading(false);
     }
@@ -817,9 +838,9 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
     try {
        const base64 = base64AudioUrl.split(',')[1];
        const mime = base64AudioUrl.split(';')[0].split(':')[1];
-       const text = await transcribeAudio(base64, mime);
+       const text = await transcribeAudio(base64, mime, apiKey); // PASS API KEY
        setTranscription(text);
-    } catch (e) { alert("Transcription failed"); } finally { setIsTranscribing(false); }
+    } catch (e) { alert("Transcription failed. Please check your API Key."); } finally { setIsTranscribing(false); }
   };
 
   // --- RENDERERS ---
@@ -861,6 +882,15 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
                    <p className="text-slate-500 mt-2">Manage your classes, students and curriculum.</p>
                  </div>
                  <div className="flex items-center gap-4">
+                    {/* API Key Button */}
+                    <button 
+                        onClick={() => { setTempKeyInput(apiKey); setShowKeyModal(true); }}
+                        className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 font-medium text-sm border border-slate-200 px-3 py-2 rounded-lg bg-white shadow-sm"
+                        title="Manage API Key"
+                    >
+                        <Key size={16} /> {apiKey ? 'Key Configured' : 'Set API Key'}
+                    </button>
+
                     <button 
                         onClick={() => setShowGrading(true)} 
                         className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-lg hover:bg-slate-50 font-bold shadow-sm relative transition-all active:scale-95"
@@ -1308,6 +1338,56 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
        </div>
 
        {/* MODALS */}
+       
+       {/* API KEY MODAL */}
+       {showKeyModal && (
+           <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[100] backdrop-blur-sm animate-in fade-in">
+               <div className="bg-white rounded-xl w-full max-w-md p-8 shadow-2xl border border-slate-200 animate-in zoom-in-95">
+                   <div className="flex flex-col items-center text-center gap-4">
+                       <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 mb-2">
+                           <Key size={32} />
+                       </div>
+                       <div>
+                           <h3 className="text-2xl font-bold text-slate-900">Enter API Key</h3>
+                           <p className="text-slate-500 mt-2 text-sm leading-relaxed">
+                               To use AI features like Grading and Quiz Generation, you must provide your own Google Gemini API Key.
+                           </p>
+                       </div>
+                       
+                       <div className="w-full space-y-3 mt-2">
+                           <input 
+                               type="password"
+                               className="w-full p-3 border-2 border-slate-200 rounded-lg focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all text-center text-sm bg-white text-slate-900 placeholder:text-slate-400 font-medium"
+                               placeholder="Paste your API Key here..."
+                               value={tempKeyInput}
+                               onChange={(e) => setTempKeyInput(e.target.value)}
+                           />
+                           <div className="text-xs text-slate-400">
+                               Don't have one? <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-indigo-600 font-bold hover:underline">Get it here</a>
+                           </div>
+                       </div>
+
+                       <div className="flex gap-3 w-full mt-4">
+                           {apiKey && (
+                               <button 
+                                   onClick={() => setShowKeyModal(false)} 
+                                   className="flex-1 py-3 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-colors"
+                               >
+                                   Cancel
+                               </button>
+                           )}
+                           <button 
+                               onClick={handleSaveKey} 
+                               disabled={!tempKeyInput.trim()}
+                               className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                           >
+                               Save Key
+                           </button>
+                       </div>
+                   </div>
+               </div>
+           </div>
+       )}
 
        {/* CLASS DELETION CONFIRMATION MODAL */}
        {classToDelete && (
