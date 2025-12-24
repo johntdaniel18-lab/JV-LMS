@@ -1,8 +1,41 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // Helper: Check if user is a Teacher (Logged in via Email/Password)
+    function isTeacher() {
+      return request.auth != null && request.auth.token.firebase.sign_in_provider == 'password';
+    }
+
+    // Helper: Check if user is a Student (Logged in Anonymously)
+    function isStudent() {
+      return request.auth != null && request.auth.token.firebase.sign_in_provider == 'anonymous';
+    }
+
+    // --- TEACHER PERMISSIONS ---
+    // Teachers can Read and Write to ALL collections
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isTeacher();
+    }
+
+    // --- STUDENT PERMISSIONS ---
+    
+    // Content: Read-Only for Students
+    match /classes/{id} { allow read: if isStudent(); }
+    match /sessions/{id} { allow read: if isStudent(); }
+    match /materials/{id} { allow read: if isStudent(); }
+    match /assignments/{id} { allow read: if isStudent(); }
+    match /assignmentGroups/{id} { allow read: if isStudent(); }
+    match /events/{id} { allow read: if isStudent(); }
+
+    // User Profile: Students need to create/update their own profile (for enrollment)
+    match /users/{userId} {
+      allow read, write: if isStudent();
+    }
+
+    // Submissions: Students need to create and read submissions
+    match /submissions/{submissionId} {
+      allow read, write: if isStudent();
     }
   }
 }
